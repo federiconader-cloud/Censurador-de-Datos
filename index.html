@@ -236,21 +236,28 @@
       img.src = imgObj.image_data;
     }
 
-    function setupCanvasWithImage(img) {
+   function setupCanvasWithImage(img) {
       originalImg = img;
-      const wrapper = document.getElementById('canvas-wrapper'), maxW = wrapper.clientWidth - 40, maxH = wrapper.clientHeight - 40;
-      let w = img.width, h = img.height;
-      if (w > maxW) { h *= maxW / w; w = maxW; }
-      if (h > maxH) { w *= maxH / h; h = maxH; }
-      canvas.width = Math.round(w); canvas.height = Math.round(h);
+      
+      // 1. Mantenemos la resolución original de la imagen
+      canvas.width = img.width; 
+      canvas.height = img.height;
+      
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       history = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
-      const blurs = { low: 10, high: 45 };
+      
+      // 2. Escalamos el efecto blur en proporción a la resolución.
+      // Si la imagen es 4K, un blur de 10px casi no se notará. Lo escalamos en base a un ancho de referencia.
+      let scale = Math.max(1, canvas.width / 1000); 
+      const blurs = { low: 10 * scale, high: 45 * scale };
+      
       ['low', 'high'].forEach(level => {
           blurCanvases[level].width = canvas.width; blurCanvases[level].height = canvas.height;
           const bctx = blurCanvases[level].getContext('2d');
-          bctx.filter = `blur(${blurs[level]}px)`; bctx.drawImage(canvas, 0, 0);
+          bctx.filter = `blur(${blurs[level]}px)`; 
+          bctx.drawImage(canvas, 0, 0);
       });
+      
       document.getElementById('upload-area').classList.add('hidden');
       document.getElementById('canvas-container').classList.remove('hidden');
       document.getElementById('action-buttons').classList.remove('hidden');
