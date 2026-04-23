@@ -236,28 +236,26 @@
       img.src = imgObj.image_data;
     }
 
-   function setupCanvasWithImage(img) {
+    function setupCanvasWithImage(img) {
       originalImg = img;
-      
-      // 1. Mantenemos la resolución original de la imagen
-      canvas.width = img.width; 
-      canvas.height = img.height;
-      
+      const wrapper = document.getElementById('canvas-wrapper'), maxW = wrapper.clientWidth - 40, maxH = wrapper.clientHeight - 40;
+      let w = img.width, h = img.height;
+      if (w > maxW) { h *= maxW / w; w = maxW; }
+      if (h > maxH) { w *= maxH / h; h = maxH; }
+      canvas.width = Math.round(w); canvas.height = Math.round(h);
+      previewCanvas.width = canvas.width; previewCanvas.height = canvas.height;
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       history = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
       
-      // 2. Escalamos el efecto blur en proporción a la resolución.
-      // Si la imagen es 4K, un blur de 10px casi no se notará. Lo escalamos en base a un ancho de referencia.
+      // CONFIGURACIÓN DE INTENSIDAD (MODIFICADO AQUÍ)
       let scale = Math.max(1, canvas.width / 1000); 
-      const blurs = { low: 10 * scale, high: 45 * scale };
+      const blurs = { low: 4 * scale, high: 6 * scale }; // Bajado de 10 y 45 respectivamente
       
       ['low', 'high'].forEach(level => {
           blurCanvases[level].width = canvas.width; blurCanvases[level].height = canvas.height;
           const bctx = blurCanvases[level].getContext('2d');
-          bctx.filter = `blur(${blurs[level]}px)`; 
-          bctx.drawImage(canvas, 0, 0);
+          bctx.filter = `blur(${blurs[level]}px)`; bctx.drawImage(canvas, 0, 0);
       });
-      
       document.getElementById('upload-area').classList.add('hidden');
       document.getElementById('canvas-container').classList.remove('hidden');
       document.getElementById('action-buttons').classList.remove('hidden');
@@ -287,13 +285,7 @@
       if (!drawing || !originalImg) return; const { x, y } = getPos(e);
       const s = brushSize * (canvas.width / canvas.getBoundingClientRect().width);
       let dX = x, dY = y;
-      if (shiftKey) { 
-          if (!axisLocked) { 
-              const dx = Math.abs(x - strokeStartX), dy = Math.abs(y - strokeStartY); 
-              if (dx > 5 || dy > 5) axisLocked = dx > dy ? 'x' : 'y'; 
-          } 
-          if (axisLocked === 'x') dY = strokeStartY; else dX = strokeStartX; 
-      }
+      if (shiftKey) { if (!axisLocked) { const dx = Math.abs(x - strokeStartX), dy = Math.abs(y - strokeStartY); if (dx > 5 || dy > 5) axisLocked = dx > dy ? 'x' : 'y'; } if (axisLocked === 'x') dY = strokeStartY; else dX = strokeStartX; }
       const dist = Math.hypot(dX - lastX, dY - lastY), steps = Math.max(1, Math.floor(dist / (s / 4))); 
       for (let i = 1; i <= steps; i++) {
           const cx = lastX + (dX - lastX) * (i/steps), cy = lastY + (dY - lastY) * (i/steps);
@@ -317,11 +309,8 @@
     function updateGallery() {
       const g = document.getElementById('gallery-preview'), s = document.getElementById('gallery-section');
       document.getElementById('image-count').textContent = savedImages.length;
-      
-      // Sutil contador de selección
       const selText = document.getElementById('selection-sub-text');
       selText.textContent = selectedImages.size > 0 ? `| ${selectedImages.size} seleccionadas` : '';
-
       if (savedImages.length === 0) { s.classList.add('hidden'); return; }
       s.classList.remove('hidden'); g.innerHTML = '';
       savedImages.forEach((img) => {
